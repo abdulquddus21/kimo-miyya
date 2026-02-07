@@ -1,4 +1,5 @@
 // pages/api/completations/kimo-ai.js
+
 export const config = {
   api: { bodyParser: { sizeLimit: "25mb" } }, // rasm/base64 bo'lsa ham sig'adi
 };
@@ -8,6 +9,37 @@ const KIMO_PUBLIC_API_KEY = process.env.KIMO_PUBLIC_API_KEY;
 
 // Faqat shu model ishlaydi (vision ham shu model orqali)
 const FIXED_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+
+// ✅ CORS: faqat shu originlarga ruxsat
+const ALLOWED_ORIGINS = new Set([
+  "http://localhost:5173",
+  "https://kimo-base.netlify.app",
+]);
+
+function setCors(req, res) {
+  const origin = req.headers.origin;
+
+  // Origin bo'lsa va whitelistda bo'lsa — shuni qaytaramiz
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  // Vary: Origin — cache muammosini oldini oladi
+  res.setHeader("Vary", "Origin");
+
+  // Preflight uchun kerak
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, x-api-key, Authorization"
+  );
+
+  // (ixtiyoriy) agar cookie/session ishlatsang true qilinadi
+  // res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // Preflight cache (tezlashadi)
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
 
 // KIMO "miyya" system prompt
 function buildSystemPrompt({ extra = "", vision = false } = {}) {
@@ -32,7 +64,7 @@ function buildSystemPrompt({ extra = "", vision = false } = {}) {
 - Rasmni diqqat bilan tahlil qil: obyektlar, matnlar, ranglar, muhit, odamlar, holat.
 - Agar rasmda matn bo'lsa, uni o'qib yozib ber (aniq bo'lmasa, taxmin va noaniqlikni ayt).
 - Foydalanuvchi nimani xohlayotganini rasm + matn asosida bajargin.
-- Agar rasm sifati yomon bo'lsa: <y>aniq ko'rinmaydi</y> deb ayt va nima kerakligini so'ra.` 
+- Agar rasm sifati yomon bo'lsa: <y>aniq ko'rinmaydi</y> deb ayt va nima kerakligini so'ra.`
     : "";
 
   return base + visionRules + (extra ? `\n\n${extra}` : "");
@@ -46,7 +78,6 @@ function hasImage(messages = []) {
         if (part?.type === "image_url") return true;
       }
     }
-    // ba'zi clientlar "image" degan field yuborishi mumkin
     if (m?.imageBase64 || m?.image) return true;
   }
   return false;
@@ -55,12 +86,10 @@ function hasImage(messages = []) {
 // OpenAI/Groq formatini normalize qilish (image_url ni ham support)
 function normalizeMessages(messages = []) {
   return (messages || []).map((m) => {
-    // 1) Oddiy string
     if (typeof m.content === "string") {
       return { role: m.role, content: m.content };
     }
 
-    // 2) OpenAI-style multimodal: [{type:"text"},{type:"image_url"}]
     if (Array.isArray(m.content)) {
       const fixedParts = m.content
         .map((p) => {
@@ -69,7 +98,6 @@ function normalizeMessages(messages = []) {
           }
 
           if (p?.type === "image_url") {
-            // p.image_url.url bo'lishi kerak (dataURL yoki http url)
             const url =
               p?.image_url?.url ||
               p?.url ||
@@ -87,7 +115,6 @@ function normalizeMessages(messages = []) {
       return { role: m.role, content: fixedParts };
     }
 
-    // 3) Ba'zi clientlar imageBase64 alohida yuboradi
     if (m?.imageBase64 && m?.imageType) {
       return {
         role: m.role || "user",
@@ -101,7 +128,6 @@ function normalizeMessages(messages = []) {
       };
     }
 
-    // fallback
     return { role: m.role, content: String(m.content ?? "") };
   });
 }
@@ -125,6 +151,14 @@ function toOpenAIResponse({ id, model, content }) {
 }
 
 export default async function handler(req, res) {
+  // ✅ Har doim CORS qo'yamiz
+  setCors(req, res);
+
+  // ✅ Preflight (OPTIONS) so'rovni yakunlab yuboramiz
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   if (req.method !== "POST") return res.status(200).send("OK");
 
   // API key check (ixtiyoriy)
@@ -150,11 +184,8 @@ export default async function handler(req, res) {
     const normalized = normalizeMessages(messages);
     const vision = hasImage(normalized);
 
-    // Oxirgi 15 ta message (frontenddagi kabi)
     const last = normalized.slice(-15);
 
-    // NOTE: agar client o'zi ham system prompt yuborsa, uni ham qoldiramiz.
-    // Lekin bizning KIMO miyya systemimiz har doim 1-chi bo'ladi.
     const finalMessages = [
       { role: "system", content: buildSystemPrompt({ vision }) },
       ...last,
@@ -167,7 +198,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: FIXED_MODEL, // <-- FAQAT SHU (text + image)
+        model: FIXED_MODEL,
         messages: finalMessages,
         temperature,
         max_tokens,
