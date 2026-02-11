@@ -8,12 +8,16 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const KIMO_PUBLIC_API_KEY = process.env.KIMO_PUBLIC_API_KEY;
 
 // Faqat shu model ishlaydi (vision ham shu model orqali)
-const FIXED_MODEL = "moonshotai/kimi-k2-instruct-0905";
+const FIXED_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
 
 // ✅ CORS: faqat shu originlarga ruxsat
 const ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
   "https://kimo-base.netlify.app",
+  "https://www.dachago.uz",
+  "https://dachago.uz",
+
+
 ]);
 
 function setCors(req, res) {
