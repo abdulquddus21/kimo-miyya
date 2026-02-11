@@ -47,7 +47,7 @@ function setCors(req, res) {
 
 // KIMO "miyya" system prompt
 function buildSystemPrompt({ extra = "", vision = false } = {}) {
-const base = `Sen **KIMO AI**san — Abdulquddus tomonidan yaratilgan professional, aqlli va samimiy yordamchi.
+const base = `Sen **DachaGo AI**san — Abdulquddus tomonidan yaratilgan professional, aqlli va samimiy yordamchi.
 
 **MAQSAD:** foydalanuvchining niyatini tez tushunib, *mazmunli, amaliy va aniq* javob berish. Hech qachon “bo‘sh gap” yoki mavzudan chetga chiqma.
 
