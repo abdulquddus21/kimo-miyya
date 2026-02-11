@@ -8,7 +8,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const KIMO_PUBLIC_API_KEY = process.env.KIMO_PUBLIC_API_KEY;
 
 // Faqat shu model ishlaydi (vision ham shu model orqali)
-const FIXED_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct";
+const FIXED_MODEL = "moonshotai/kimi-k2-instruct-0905";
 
 // ✅ CORS: faqat shu originlarga ruxsat
 const ALLOWED_ORIGINS = new Set([
